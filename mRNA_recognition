@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
-# creat a dictionary of nucleotide
+# Define codon table for translation
 codon_table = {
     'ATA': 'I', 'ATC': 'I', 'ATT': 'I', 'ATG': 'M',
     'ACA': 'T', 'ACC': 'T', 'ACG': 'T', 'ACT': 'T',
@@ -20,19 +22,22 @@ codon_table = {
     'TGC': 'C', 'TGT': 'C', 'TGA': '*', 'TGG': 'W'
 }
 
-# ending nuceotide
+# Define stop codons
 stop_codons = ['TAA', 'TAG', 'TGA']
 
-# mission 1: find the most frequent nucleotide
+# Task 1: Find the most frequent codon
 def find_most_frequent_codon(mRNA):
+    mRNA = mRNA.upper()
     codon_count = {}
     start_index = mRNA.find('ATG')
-    if start_index == -1:
+    if start_index == -1 or len(mRNA[start_index:]) % 3 != 0:
         return None
     for i in range(start_index, len(mRNA) - 2, 3):
         codon = mRNA[i:i + 3]
         if codon in stop_codons:
             break
+        if len(codon) != 3 or codon not in codon_table:
+            continue
         if codon in codon_count:
             codon_count[codon] += 1
         else:
@@ -41,23 +46,26 @@ def find_most_frequent_codon(mRNA):
         return None
     return max(codon_count, key=codon_count.get)
 
-# mission 2: interprete the most frequent nuleotide
-def find_most_frequent_amino_acid(mrna):
-    most_frequent_codon = find_most_frequent_codon(mrna)
+# Task 2: Translate the most frequent codon to amino acid
+def get_amino_acid_from_codon(mRNA):
+    most_frequent_codon = find_most_frequent_codon(mRNA)
     if most_frequent_codon is None:
         return None
     return codon_table[most_frequent_codon]
 
-# mission 3: draw the figure of the most frequent nucleotide
-def plot_amino_acid_frequency(mrna):
+# Task 3: Plot global amino acid frequency distribution
+def plot_amino_acid_frequency(mRNA):
+    mRNA = mRNA.upper()
     amino_acid_count = {}
-    start_index = mrna.find('ATG')
-    if start_index == -1:
+    start_index = mRNA.find('ATG')
+    if start_index == -1 or len(mRNA[start_index:]) % 3 != 0:
         return
-    for i in range(start_index, len(mrna) - 2, 3):
-        codon = mrna[i:i + 3]
+    for i in range(start_index, len(mRNA) - 2, 3):
+        codon = mRNA[i:i + 3]
         if codon in stop_codons:
             break
+        if len(codon) != 3 or codon not in codon_table:
+            continue
         amino_acid = codon_table[codon]
         if amino_acid in amino_acid_count:
             amino_acid_count[amino_acid] += 1
@@ -65,24 +73,120 @@ def plot_amino_acid_frequency(mrna):
             amino_acid_count[amino_acid] = 1
     if not amino_acid_count:
         return
-    plt.bar(amino_acid_count.keys(), amino_acid_count.values())
-    plt.xlabel('氨基酸')
-    plt.ylabel('频率')
-    plt.title('氨基酸频率分布')
-    plt.show()
 
-# mission 4: calculate the GC concentration in the mRNA
-def calculate_gc_content(mrna):
-    gc_count = mrna.count('G') + mrna.count('C')
-    total_count = len(mrna)
-    if total_count == 0:
-        return 0
-    return (gc_count / total_count) * 100
+    # Academic styling for the bar plot
+    plt.figure(figsize=(10, 6))
+    sns.barplot(x=list(amino_acid_count.values()), y=list(amino_acid_count.keys()), palette='viridis')
+    plt.xlabel('Frequency', fontsize=12)
+    plt.ylabel('Amino Acids', fontsize=12)
+    plt.title('Global Amino Acid Frequency Distribution', fontsize=14, pad=15)
+    plt.grid(True, axis='x', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.savefig('amino_acid_frequency.png')
 
+# Task 4: Expression to Structure Analysis
+def expression_to_structure_analysis(mRNA, window_size=30, step_size=3):
+    mRNA = mRNA.upper()
+    start_index = mRNA.find('ATG')
+    if start_index == -1 or len(mRNA[start_index:]) % 3 != 0:
+        return
 
+    # Extract the coding sequence (from ATG to stop codon)
+    coding_sequence = ''
+    for i in range(start_index, len(mRNA) - 2, 3):
+        codon = mRNA[i:i + 3]
+        if codon in stop_codons:
+            break
+        if len(codon) != 3 or codon not in codon_table:
+            continue
+        coding_sequence += codon
+
+    if not coding_sequence:
+        return
+
+    # 1. Codon Usage Bias Heatmap (Sliding Window)
+    codons = [coding_sequence[i:i + 3] for i in range(0, len(coding_sequence), 3)]
+    unique_codons = sorted(set(codons))
+    num_windows = (len(coding_sequence) - window_size) // step_size + 1
+    codon_freq_matrix = np.zeros((len(unique_codons), num_windows))
+
+    for win_idx in range(num_windows):
+        start = win_idx * step_size
+        window = coding_sequence[start:start + window_size]
+        window_codons = [window[i:i + 3] for i in range(0, len(window), 3) if len(window[i:i + 3]) == 3]
+        for codon in window_codons:
+            if codon in codon_table:
+                codon_idx = unique_codons.index(codon)
+                codon_freq_matrix[codon_idx, win_idx] += 1
+
+    # Normalize frequencies per window
+    codon_freq_matrix = codon_freq_matrix / (window_size // 3)
+
+    # Plot Codon Usage Heatmap
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(codon_freq_matrix, cmap='YlOrRd', xticklabels=range(num_windows), yticklabels=unique_codons)
+    plt.xlabel('Window Position (Step Size = 3 Nucleotides)', fontsize=12)
+    plt.ylabel('Codons', fontsize=12)
+    plt.title('Codon Usage Bias Across mRNA Sequence', fontsize=14, pad=15)
+    plt.tight_layout()
+    plt.savefig('codon_usage_heatmap.png')
+
+    # 2. Amino Acid Frequency Heatmap (Sliding Window)
+    amino_acids = sorted(set(codon_table.values()) - {'*'})
+    aa_freq_matrix = np.zeros((len(amino_acids), num_windows))
+
+    for win_idx in range(num_windows):
+        start = win_idx * step_size
+        window = coding_sequence[start:start + window_size]
+        window_codons = [window[i:i + 3] for i in range(0, len(window), 3) if len(window[i:i + 3]) == 3]
+        for codon in window_codons:
+            if codon in codon_table:
+                aa = codon_table[codon]
+                if aa != '*':
+                    aa_idx = amino_acids.index(aa)
+                    aa_freq_matrix[aa_idx, win_idx] += 1
+
+    # Normalize frequencies per window
+    aa_freq_matrix = aa_freq_matrix / (window_size // 3)
+
+    # Plot Amino Acid Frequency Heatmap
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(aa_freq_matrix, cmap='Blues', xticklabels=range(num_windows), yticklabels=amino_acids)
+    plt.xlabel('Window Position (Step Size = 3 Nucleotides)', fontsize=12)
+    plt.ylabel('Amino Acids', fontsize=12)
+    plt.title('Local Amino Acid Frequency Across Translated Sequence', fontsize=14, pad=15)
+    plt.tight_layout()
+    plt.savefig('amino_acid_heatmap.png')
+
+# Main execution
 if __name__ == "__main__":
-    mrna_sequence = "ATGCCCATGCCCATGCCCTAA"
-    print("最频繁的核苷酸三联体:", find_most_frequent_codon(mrna_sequence))
-    print("最频繁氨基酸:", find_most_frequent_amino_acid(mrna_sequence))
+    # Example mRNA sequence (user-specified)
+    mrna_sequence = (
+    "ATG"  # Start codon
+    "CCCATGCCCATGCCCATG"  # Repeated CCC (Proline) to show codon bias
+    "GCTGCAGCTGCAGCT"  # GCT (Alanine) repetition
+    "TCTTCTTCTTCT"  # TCT (Serine) repetition
+    "GGAGGAGGAGGA"  # GGA (Glycine) repetition
+    "GTAGTGGTTGTG"  # GTA/GTT (Valine) mix
+    "CGCCGCCGCCGC"  # CGC (Arginine) repetition
+    "AAAGAAAAAGAA"  # AAA (Lysine) repetition
+    "GAAGAAGAAGAA"  # GAA (Glutamic Acid) repetition
+    "CAACAACAACAA"  # CAA (Glutamine) repetition
+    "ATCATCATCATC"  # ATC (Isoleucine) repetition
+    "TGG"  # TGG (Tryptophan)
+    "TAA"  # Stop codon
+)
+    
+    # Task 1
+    most_frequent_codon = find_most_frequent_codon(mrna_sequence)
+    print(f"Most frequent codon: {most_frequent_codon}")
+    
+    # Task 2
+    most_frequent_aa = get_amino_acid_from_codon(mrna_sequence)
+    print(f"Most frequent amino acid: {most_frequent_aa}")
+    
+    # Task 3
     plot_amino_acid_frequency(mrna_sequence)
-    print("GC含量 (%):", calculate_gc_content(mrna_sequence))
+    
+    # Task 4
+    expression_to_structure_analysis(mrna_sequence, window_size=30, step_size=3)
