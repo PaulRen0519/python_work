@@ -39,9 +39,6 @@ def the_most_common_code(mRNA_sequence):
         print("Warning: mRNA sequence does not start with start codon 'AUG'. Proceeding anyway.")
     trinucleotides = []
     start_index = mRNA_sequence.find('AUG')
-    if start_index == -1:
-        print("Error: No start codon (AUG) found.")
-        return None
     for i in range(start_index, len(mRNA_sequence) - 2, 3):
         trinucleotide = mRNA_sequence[i:i+3]
         if trinucleotide in stop_codons:
@@ -59,22 +56,30 @@ def the_most_common_code(mRNA_sequence):
     return most_common_codons
 
 # --- Function 2: Translate most common codon(s) ---
-def most_frequent_amino_acid(codons):
-    if codons is None:
-        print("Error: No valid codon to translate.")
-        return None
-    amino_acids = []
-    for codon in codons:
-        amino_acid = codon_to_amino_acid.get(codon, None)
-        if amino_acid:
-            amino_acids.append(amino_acid)
-        else:
-            print(f"Error: Codon {codon} not found in translation table.")
-    if amino_acids:
-        print(f"The most common amino acid(s): {', '.join(amino_acids)}.")
-    else:
-        print("Error: No valid amino acid translation found.")
-    return amino_acids
+def most_frequent_amino_acid(mRNA_sequence):
+    mRNA_sequence = mRNA_sequence.upper().replace(" ", "")
+    start_pos = mRNA_sequence.find("AUG")
+    
+    if start_pos == -1:
+        return "Error: No start codon (AUG) found"
+    
+    aa_counts = {}
+    i = start_pos
+    while i <= len(mRNA_sequence) - 3:
+        codon = mRNA_sequence[i:i+3]
+        if codon in {'UAA', 'UAG', 'UGA'}:
+            break
+        if len(codon) == 3:
+            aa = codon_to_amino_acid.get(codon, '?')
+            aa_counts[aa] = aa_counts.get(aa, 0) + 1
+        i += 3
+    
+    if not aa_counts:
+        return "Error: No valid codons found between start and stop"
+    
+    most_common = max(aa_counts.items(), key=lambda x: x[1])
+    return f"Most frequent amino acid: {most_common[0]} (appeared {most_common[1]} times)"
+
 
 # --- Function 3: Plot amino acid frequencies ---
 def plot_amino_acid_frequencies(mRNA_sequence):
@@ -180,7 +185,7 @@ if __name__ == "__main__":
     if not mRNA_sequence:
         print("Error: Empty input.")
     else:
-        final_codons = the_most_common_code(mRNA_sequence)
-        most_frequent_amino_acid(final_codons)
+        the_most_common_code(mRNA_sequence)
+        most_frequent_amino_acid(mRNA_sequence)
         plot_amino_acid_frequencies(mRNA_sequence)
         expression_to_structure_analysis(mRNA_sequence)
