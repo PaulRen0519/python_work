@@ -33,6 +33,24 @@ codon_to_amino_acid = {
 
 stop_codons = ['UAA', 'UAG', 'UGA']
 
+# Transcript DNA into mRNA
+def dna_to_mrna(dna):
+    dna = dna.upper()
+    mrna = ''
+    for base in dna:
+        if base == 'A':
+            mrna += 'U'
+        elif base == 'T':
+            mrna += 'A'
+        elif base == 'C':
+            mrna += 'G'
+        elif base == 'G':
+            mrna += 'C'
+        else:
+            raise ValueError("Invalid bases! Only available for A, T, C, G.")
+    return mrna
+        
+                    
 # --- Function 1: Find the most common codon(s) ---
 def the_most_common_code(mRNA_sequence):
     if not re.search(r"^AUG", mRNA_sequence):
@@ -181,10 +199,12 @@ def expression_to_structure_analysis(mRNA_sequence, window_size=30, step_size=3)
 
 # --- Main Program ---
 if __name__ == "__main__":
-    mRNA_sequence = input("Enter the mRNA sequence: ").strip().upper()
+    dna = input("Enter the DNA sequence: ").strip().upper()
+    mRNA_sequence = dna_to_mrna(dna)
     if not mRNA_sequence:
         print("Error: Empty input.")
     else:
+
         the_most_common_code(mRNA_sequence)
         most_frequent_amino_acid(mRNA_sequence)
         plot_amino_acid_frequencies(mRNA_sequence)
